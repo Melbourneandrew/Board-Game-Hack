@@ -1,0 +1,12 @@
+.match-lobby-grid{
+  display: flex;
+  flex-flow: row wrap;
+}
+
+.match-lobby-gamecard{
+  margin: 10px;
+}
+
+#make-match-button{
+  margin: 10px;
+}
