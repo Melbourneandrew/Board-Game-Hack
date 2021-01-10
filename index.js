@@ -8,10 +8,15 @@ const app = express()
 const server = http.createServer(app)
 const io = socketio(server)
 
+//by default the user is O, not X
+
+
+//default match with computer is always available
 var matches = [{
   challenger_name: "Computer",
   challenger_skill: "random",
-  match_description: "Digital opponent. Makes moves completly randomly."
+  match_description: "Digital opponent. Makes moves completly randomly.",
+  match_id: "0"
 }];
 
 // static file middleware
@@ -19,9 +24,9 @@ app.use(express.static(path.join(__dirname + '/')))
 
 //socket configurations
 io.on('connection', (socket) => {
+  var user = {isX:false}
   // console.log("New client connected to socket")
   socket.emit('message', 'Connected to socket')
-  var user = {}
 
   // sets user values from client to user var in socket
   // user name and user skill will be available to the socket.
@@ -37,7 +42,10 @@ io.on('connection', (socket) => {
   // generated on the client
   socket.on('makeMatch', (data) => {
     var room = data.matchID
+    user.room = room
     makeMatch(user, data.description, room)
+    //match maker is x
+    user.isX = true
 
     socket.join(room)
     console.log("User " + user.name + " made and joined room " + data.matchID)
@@ -47,9 +55,30 @@ io.on('connection', (socket) => {
   // connects socket to the namespace made by the matchmakers client
   socket.on('joinMatch', (id) => {
     socket.join(id)
+    user.room = id
     console.log("User " + user.name + " joined room " + id)
 
-    io.to(id).emit('joinedMatch', user.name)
+    io.to(id).emit('joinedMatch', {usr: user.name, matchid: id})
+  })
+
+  socket.on('isx', () =>{
+    socket.emit('xStatus', user.isX)
+  })
+
+  socket.on('reportMove', (index)=>{
+    console.log("User " + user.name + "made move at "+ index)
+    socket.to(user.room).emit('yourMove', index)
+  })
+
+  socket.on('disconnect', ()=>{
+
+    //remove any matches a player may have made if they dc
+    for(var i = 0; i < matches.length; i++){
+      if(matches[i].challenger_name == user.name){
+        //starting at position i, remove 1 element
+        matches.splice(i, 1)
+      }
+    }
   })
 
   // for debug
@@ -75,6 +104,8 @@ app.get('/', (req, res) => {
 app.get('/game', (req, res) => {
   res.sendFile(path.join(__dirname + '/html/game.html'))
 })
+
+// app.get('/isx', (req,res) => {res.send(user.isX)})
 
 //mount app
 const port = 3000
