@@ -41,6 +41,12 @@
   height: 100%;
 }
 
+.score-board{
+  display: flex;
+  flex-direction: row;
+
+}
+
 /* .game-square:hover{
   width: 55px;
   height: 55px;

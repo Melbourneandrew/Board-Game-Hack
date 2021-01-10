@@ -70,6 +70,12 @@ io.on('connection', (socket) => {
     socket.to(user.room).emit('yourMove', index)
   })
 
+  socket.on('postScore', (points)=>{
+    console.log("User "+ points.player + " has " + points.pts + " points")
+
+    socket.to(user.room).emit('updateScore', {score:points.pts, player:points.player})
+  })
+
   socket.on('disconnect', ()=>{
 
     //remove any matches a player may have made if they dc

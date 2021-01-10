@@ -6,7 +6,7 @@ const o_icon = `<svg class='o' xmlns="http://www.w3.org/2000/svg" fill="currentC
 </svg>`
 
 let gameBoardSize = 100
-let gameBoard = new Array(gameBoardSize)
+let gameBoard = new Array(gameBoardSize).fill('.')
 
 var isX
 var isTurn = false
@@ -24,6 +24,15 @@ $(() => {
     isTurn = true
     if (data) {
       placeSymbol(data)
+    }
+  })
+
+  socket.on('updateScore', (score)=>{
+    console.log("Got opponent score:" + score.score )
+    if(score.player){
+      $('#xpts').text(score.score)
+    }else{
+      $('#opts').text(score.score)
     }
   })
 
@@ -45,7 +54,7 @@ function hoverOn() {
   }
 
   let index = $(this).attr('id')
-  let inverseIndex = (gameBoardSize-1) - index
+  let inverseIndex = (gameBoardSize - 1) - index
   let selector = '#' + index.toString()
   let inverseSelector = '#' + inverseIndex.toString();
 
@@ -64,7 +73,7 @@ function hoverOff() {
   }
 
   let index = $(this).attr('id')
-  let inverseIndex = (gameBoardSize-1) - index
+  let inverseIndex = (gameBoardSize - 1) - index
   let selector = '#' + index.toString()
   let inverseSelector = '#' + inverseIndex.toString();
 
@@ -85,10 +94,10 @@ function placeSymbol(tile) {
     return false
   }
 
-  if (tile < (gameBoardSize+1)) {
+  if (tile < (gameBoardSize + 1)) {
     //Opponents move
 
-    let inverseTile = (gameBoardSize-1) - tile
+    let inverseTile = (gameBoardSize - 1) - tile
     let tileSelector = '#' + tile.toString()
     let inverseTileSelector = '#' + inverseTile.toString();
 
@@ -108,11 +117,9 @@ function placeSymbol(tile) {
   } else {
     //Players move
     let index = $(this).attr('id')
-    let inverseIndex = (gameBoardSize-1) - index
+    let inverseIndex = (gameBoardSize - 1) - index
     let selector = '#' + index.toString()
     let inverseSelector = '#' + inverseIndex.toString()
-
-    console.log($(selector))
 
     $(inverseSelector).css({
       "opacity": "1.0"
@@ -120,22 +127,479 @@ function placeSymbol(tile) {
     $(selector).removeClass('open')
     $(inverseSelector).removeClass('open')
 
-
-    // $(selector).append(isX ? x_icon : o_icon)
-    // $(inverseSelector).append(isX ? x_icon : o_icon)
-
-    reportMove(index)
-
     gameBoard[index] = isX ? 'x' : 'o'
     gameBoard[inverseIndex] = isX ? 'x' : 'o'
+
+    reportMove(index, inverseIndex)
   }
 }
 
-function reportMove(indx) {
+function reportMove(indx, inverseIndx) {
   socket.emit('reportMove', indx)
+  scoreMove(indx, inverseIndx)
 
-  isTurn = false;
+  // isTurn = false;
 
-  console.log("Reporting move " + indx + " player turn = " + isTurn)
+  // console.log("Reporting move " + indx + " player turn = " + isTurn)
 
+}
+var streaks = []
+
+function scoreMove(tile, inverseTile) {
+  tile = parseInt(tile)
+  inverseTile = parseInt(inverseTile)
+
+  //      *        -11 |  -10 | -9
+  //      *       -----+-----+-----
+  //      *         -1 | indx | +1
+  //      *       -----+-----+-----
+  //      *         +9 |  +10 | +11
+
+  var letter = isX ? 'x' : 'o'
+
+  var checkTile = tile
+  // console.table(gameBoard)
+  var row = [tile]
+  var inverseRow = [inverseTile]
+
+
+  var iterations = 0;
+
+  var diag1 = true,
+    diag2 = true,
+    diag3 = true,
+    diag4 = true,
+    i_diag1 = true,
+    i_diag2 = true,
+    i_diag3 = true,
+    i_diag4 = true,
+    left = true,
+    right = true,
+    up = true,
+    down = true,
+    i_left = true,
+    i_right = true,
+    i_up = true,
+    i_down = true
+
+
+
+  //positive diagonal /
+  while (true) {
+    iterations++
+    if (iterations > 200) {
+      console.log("overflow")
+      break;
+    }
+    // console.log('tile: ' + gameBoard[tile])
+
+    if (gameBoard[checkTile - 9] == letter && diag1) {
+      // console.log("Checking tile : "+(checkTile-9)+ " Value: " + gameBoard[checkTile-9])
+      console.log('diag1')
+      checkTile -= 9
+      row.push(checkTile)
+      continue;
+    } else if (diag1) {
+      checkTile = tile
+      diag1 = false
+    }
+
+
+    if (gameBoard[checkTile + 9] == letter && diag2) {
+      console.log('diag2')
+
+      checkTile += 9
+      row.push(checkTile)
+
+      continue;
+    } else if (diag2) {
+      checkTile = inverseTile
+      diag2 = false;
+    }
+
+
+    if (gameBoard[checkTile - 9] == letter && i_diag1) {
+      // console.log("Checking tile : "+(checkTile-9)+ " Value: " + gameBoard[checkTile-9])
+      console.log("i_diag1")
+
+      checkTile -= 9
+      inverseRow.push(checkTile)
+      continue;
+    } else if (i_diag1) {
+      checkTile = inverseTile
+      i_diag1 = false;
+    }
+
+    if (gameBoard[checkTile + 9] == letter && i_diag2) {
+      console.log("i_diag2")
+
+      checkTile += 9
+      inverseRow.push(checkTile)
+
+      continue;
+    } else if (i_diag2) {
+      checkTile = inverseTile
+      i_diag2 = false;
+    }
+
+
+    if (row.length >= 3) {
+      streaks.push(row)
+      // isSubset( master, sub )
+      streaks.forEach((streak, x) => {
+        if(isSubset(row, streak)){
+          streaks[x] = row
+          streaks.length == 0 ? null : streaks.pop
+        }
+      });
+
+      row.forEach((item, i) => {
+        $(`#${item}`).css({
+          'background-color': 'green'
+        })
+      });
+    }
+
+    if (inverseRow.length >= 3) {
+      streaks.push(inverseRow)
+      // isSubset( master, sub )
+      streaks.forEach((streak, x) => {
+        if(isSubset(inverseRow, streak)){
+          streaks[x] = inverseRow
+          streaks.length == 0 ? null : streaks.pop
+        }
+      });
+
+      inverseRow.forEach((item, i) => {
+        $(`#${item}`).css({
+          'background-color': 'green'
+        })
+      });
+    }
+
+
+
+    break;
+  }
+
+  console.log(streaks.length)
+
+  if(row.length = 3)
+  row = [tile]
+  inverseRow = [inverseTile]
+  iterations = 0
+  checkTile = tile
+
+  //negative diagonal \
+  while (true) {
+    iterations++
+    if (iterations > 200) {
+      console.log("overflow")
+      break;
+    }
+    // console.log('tile: ' + gameBoard[tile])
+
+    if (gameBoard[checkTile - 11] == letter && diag3) {
+      // console.log("Checking tile : "+(checkTile-9)+ " Value: " + gameBoard[checkTile-9])
+      console.log("diag3")
+      checkTile -= 11
+      row.push(checkTile)
+      continue;
+    } else if (diag3) {
+      checkTile = tile
+      diag3 = false
+    }
+
+
+    if (gameBoard[checkTile + 11] == letter && diag4) {
+      console.log("diag4")
+
+      checkTile += 11
+      row.push(checkTile)
+
+      continue;
+    } else if (diag4) {
+      checkTile = inverseTile
+      diag4 = false;
+    }
+
+    if (gameBoard[checkTile - 11] == letter && i_diag3) {
+      // console.log("Checking tile : "+(checkTile-9)+ " Value: " + gameBoard[checkTile-9])
+      console.log("i_diag3")
+
+      checkTile -= 11
+      inverseRow.push(checkTile)
+      continue;
+    } else if (i_diag3) {
+      checkTile = inverseTile
+      i_diag3 = false;
+    }
+
+    if (gameBoard[checkTile + 11] == letter && i_diag4) {
+      console.log("i_diag4")
+
+      checkTile += 11
+      inverseRow.push(checkTile)
+
+      continue;
+    } else if (i_diag4) {
+      checkTile = inverseTile
+      i_diag4 = false;
+    }
+
+    if (row.length >= 3) {
+      streaks.push(row)
+      // isSubset( master, sub )
+      streaks.forEach((streak, x) => {
+        if(isSubset(row, streak)){
+          streaks[x] = row
+          streaks.length == 0 ? null : streaks.pop
+        }
+      });
+
+      row.forEach((item, i) => {
+        $(`#${item}`).css({
+          'background-color': 'green'
+        })
+      });
+    }
+
+    if (inverseRow.length >= 3) {
+      streaks.push(inverseRow)
+      // isSubset( master, sub )
+      streaks.forEach((streak, x) => {
+        if(isSubset(inverseRow, streak)){
+          streaks[x] = inverseRow
+          streaks.length == 0 ? null : streaks.pop
+        }
+      });
+
+      inverseRow.forEach((item, i) => {
+        $(`#${item}`).css({
+          'background-color': 'green'
+        })
+      });
+    }
+
+    break;
+  }
+
+  row = [tile]
+  inverseRow = [inverseTile]
+  iterations = 0
+  checkTile = tile
+
+  //left, right <->
+  while (true) {
+    iterations++
+    if (iterations > 200) {
+      console.log("overflow")
+      break;
+    }
+    // console.log('tile: ' + gameBoard[tile])
+
+    if (gameBoard[checkTile - 1] == letter && left) {
+      // console.log("Checking tile : "+(checkTile-9)+ " Value: " + gameBoard[checkTile-9])
+      console.log("left")
+      checkTile -= 1
+      row.push(checkTile)
+      continue;
+    } else if (left) {
+      checkTile = tile
+      left = false
+    }
+
+
+    if (gameBoard[checkTile + 1] == letter && right) {
+      console.log("right")
+
+      checkTile += 1
+      row.push(checkTile)
+
+      continue;
+    } else if (right) {
+      checkTile = inverseTile
+      right = false;
+    }
+
+    if (gameBoard[checkTile - 1] == letter && i_left) {
+      // console.log("Checking tile : "+(checkTile-9)+ " Value: " + gameBoard[checkTile-9])
+      console.log("i_left")
+
+      checkTile -= 1
+      inverseRow.push(checkTile)
+      continue;
+    } else if (i_left) {
+      checkTile = inverseTile
+      i_left = false;
+    }
+
+    if (gameBoard[checkTile + 1] == letter && i_right) {
+      console.log("i_right")
+
+      checkTile += 1
+      inverseRow.push(checkTile)
+
+      continue;
+    } else if (i_right) {
+      checkTile = inverseTile
+      i_right = false;
+    }
+
+    if (row.length >= 3) {
+      streaks.push(row)
+      // isSubset( master, sub )
+      streaks.forEach((streak, x) => {
+        if(isSubset(row, streak)){
+          streaks[x] = row
+          streaks.length == 0 ? null : streaks.pop
+        }
+      });
+
+      row.forEach((item, i) => {
+        $(`#${item}`).css({
+          'background-color': 'green'
+        })
+      });
+    }
+
+    if (inverseRow.length >= 3) {
+      streaks.push(inverseRow)
+      // isSubset( master, sub )
+      streaks.forEach((streak, x) => {
+        if(isSubset(inverseRow, streak)){
+          streaks[x] = inverseRow
+          streaks.length == 0 ? null : streaks.pop
+        }
+      });
+
+      inverseRow.forEach((item, i) => {
+        $(`#${item}`).css({
+          'background-color': 'green'
+        })
+      });
+    }
+
+    break;
+  }
+
+  row = [tile]
+  inverseRow = [inverseTile]
+  iterations = 0
+  checkTile = tile
+
+  //up, down ||
+  while (true) {
+    iterations++
+    if (iterations > 200) {
+      console.log("overflow")
+      break;
+    }
+    // console.log('tile: ' + gameBoard[tile])
+
+    if (gameBoard[checkTile - 10] == letter && up) {
+      // console.log("Checking tile : "+(checkTile-9)+ " Value: " + gameBoard[checkTile-9])
+      console.log("up")
+      checkTile -= 10
+      row.push(checkTile)
+      continue;
+    } else if (up) {
+      checkTile = tile
+      up = false
+    }
+
+
+    if (gameBoard[checkTile + 10] == letter && down) {
+      console.log("down")
+
+      checkTile += 10
+      row.push(checkTile)
+
+      continue;
+    } else if (down) {
+      checkTile = inverseTile
+      down = false;
+    }
+
+    if (gameBoard[checkTile - 10] == letter && i_up) {
+      // console.log("Checking tile : "+(checkTile-9)+ " Value: " + gameBoard[checkTile-9])
+      console.log("i_up")
+
+      checkTile -= 10
+      inverseRow.push(checkTile)
+      continue;
+    } else if (i_up) {
+      checkTile = inverseTile
+      i_up = false;
+    }
+
+    if (gameBoard[checkTile + 10] == letter && i_down) {
+      console.log("i_down")
+
+      checkTile += 10
+      inverseRow.push(checkTile)
+
+      continue;
+    } else if (i_down) {
+      checkTile = inverseTile
+      i_down = false;
+    }
+
+    if (row.length >= 3) {
+      streaks.push(row)
+      // isSubset( master, sub )
+      streaks.forEach((streak, x) => {
+        if(isSubset(row, streak)){
+          streaks[x] = row
+          streaks.length == 0 ? null : streaks.pop
+        }
+      });
+
+      row.forEach((item, i) => {
+        $(`#${item}`).css({
+          'background-color': 'green'
+        })
+      });
+    }
+
+    if (inverseRow.length >= 3) {
+      streaks.push(inverseRow)
+      // isSubset( master, sub )
+      streaks.forEach((streak, x) => {
+        if(isSubset(inverseRow, streak)){
+          streaks[x] = inverseRow
+          streaks.length == 0 ? null : streaks.pop
+        }
+      });
+
+      inverseRow.forEach((item, i) => {
+        $(`#${item}`).css({
+          'background-color': 'green'
+        })
+      });
+    }
+
+    break;
+  }
+
+
+  socket.emit('postScore', {pts:streaks.length, player: isX});
+
+  if(isX){
+    $('#xpts').text(streaks.length)
+  }else{
+    $('#opts').text(streaks.length)
+  }
+}
+
+function isSubset( arr1, arr2 )
+{
+    for (var i=0; i<arr2.length; i++)
+    {
+        if ( arr1.indexOf( arr2[i] ) == -1 )
+        {
+          return false;
+        }
+    }
+    return true;
 }
