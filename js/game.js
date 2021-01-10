@@ -10,6 +10,7 @@ let gameBoard = new Array(gameBoardSize).fill('.')
 
 var isX
 var isTurn = false
+var opponentScore
 
 $(() => {
   // socket.emit('stillConnected', "still on in game.js")
@@ -25,15 +26,18 @@ $(() => {
     if (data) {
       placeSymbol(data)
     }
+    $('#waiting').text('Play!')
   })
 
   socket.on('updateScore', (score)=>{
+    opponentScore = score.score
     console.log("Got opponent score:" + score.score )
     if(score.player){
       $('#xpts').text(score.score)
     }else{
       $('#opts').text(score.score)
     }
+
   })
 
   for (let i = 0; i < gameBoardSize; i++) {
@@ -146,6 +150,17 @@ function reportMove(indx, inverseIndx) {
 var streaks = []
 
 function scoreMove(tile, inverseTile) {
+  var gameOver = true
+  gameBoard.forEach((place, i) => {
+    if(place == '.'){
+      gameOver = false
+    }
+  });
+
+  if(gameOver){
+    socket.emit("GameOver", streaks)
+  }
+
   tile = parseInt(tile)
   inverseTile = parseInt(inverseTile)
 
@@ -255,7 +270,7 @@ function scoreMove(tile, inverseTile) {
 
       row.forEach((item, i) => {
         $(`#${item}`).css({
-          'background-color': 'green'
+          'background-color': 'gray'
         })
       });
     }
@@ -272,7 +287,7 @@ function scoreMove(tile, inverseTile) {
 
       inverseRow.forEach((item, i) => {
         $(`#${item}`).css({
-          'background-color': 'green'
+          'background-color': 'gray'
         })
       });
     }
@@ -359,7 +374,7 @@ function scoreMove(tile, inverseTile) {
 
       row.forEach((item, i) => {
         $(`#${item}`).css({
-          'background-color': 'green'
+          'background-color': 'gray'
         })
       });
     }
@@ -376,7 +391,7 @@ function scoreMove(tile, inverseTile) {
 
       inverseRow.forEach((item, i) => {
         $(`#${item}`).css({
-          'background-color': 'green'
+          'background-color': 'gray'
         })
       });
     }
@@ -458,7 +473,7 @@ function scoreMove(tile, inverseTile) {
 
       row.forEach((item, i) => {
         $(`#${item}`).css({
-          'background-color': 'green'
+          'background-color': 'gray'
         })
       });
     }
@@ -475,7 +490,7 @@ function scoreMove(tile, inverseTile) {
 
       inverseRow.forEach((item, i) => {
         $(`#${item}`).css({
-          'background-color': 'green'
+          'background-color': 'gray'
         })
       });
     }
@@ -557,7 +572,7 @@ function scoreMove(tile, inverseTile) {
 
       row.forEach((item, i) => {
         $(`#${item}`).css({
-          'background-color': 'green'
+          'background-color': 'gray'
         })
       });
     }
@@ -574,7 +589,7 @@ function scoreMove(tile, inverseTile) {
 
       inverseRow.forEach((item, i) => {
         $(`#${item}`).css({
-          'background-color': 'green'
+          'background-color': 'gray'
         })
       });
     }
@@ -583,7 +598,7 @@ function scoreMove(tile, inverseTile) {
   }
 
 
-  socket.emit('postScore', {pts:streaks.length, player: isX});
+  socket.emit('postScore', {pts:streaks.length, player: isX, all:streaks});
 
   if(isX){
     $('#xpts').text(streaks.length)

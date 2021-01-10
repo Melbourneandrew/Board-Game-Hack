@@ -59,22 +59,35 @@ io.on('connection', (socket) => {
     console.log("User " + user.name + " joined room " + id)
 
     io.to(id).emit('joinedMatch', {usr: user.name, matchid: id})
+
   })
 
+  socket.on('deleteMatch', (room) =>{
+    for(var i = 0; i < matches.length; i++){
+      if(matches[i].match_id == room){
+        //starting at position i, remove 1 element
+        matches.splice(i, 1)
+      }
+    }
+  })
+
+  //tells user if they are x or o
   socket.on('isx', () =>{
     socket.emit('xStatus', user.isX)
   })
 
   socket.on('reportMove', (index)=>{
-    console.log("User " + user.name + "made move at "+ index)
+    console.log("User " + user.name + " made move at "+ index)
     socket.to(user.room).emit('yourMove', index)
   })
 
   socket.on('postScore', (points)=>{
-    console.log("User "+ points.player + " has " + points.pts + " points")
+    let playerSymbol = points.player ? 'X' : 'O'
+    console.log("User "+ playerSymbol+ " has " + points.pts + " points")
 
     socket.to(user.room).emit('updateScore', {score:points.pts, player:points.player})
   })
+
 
   socket.on('disconnect', ()=>{
 
