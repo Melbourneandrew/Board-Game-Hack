@@ -138,9 +138,9 @@ function reportMove(indx, inverseIndx) {
   socket.emit('reportMove', indx)
   scoreMove(indx, inverseIndx)
 
-  // isTurn = false;
+  isTurn = false;
 
-  // console.log("Reporting move " + indx + " player turn = " + isTurn)
+  console.log("Reporting move " + indx + " player turn = " + isTurn)
 
 }
 var streaks = []
